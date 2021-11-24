@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -e
+
+usage() {
+  echo "Usage: gh repo-collab list [<repo>]"
+  echo "       gh repo-collab add <repo> <login> [--permission <string>]"
+  echo "       gh repo-collab add <repo> < logins-file.txt"
+  echo "       gh repo-collab remove login"
+}
+
+list() {
+  local repo='{owner}/{repo}'
+  [ $# -eq 0 ] || repo="$1"
+  gh api "repos/$repo/collaborators" --template '
+    {{- range . -}}
+    {{- $perm := "" -}}
+    {{- if .permissions.admin -}}
+      {{- $perm = "admin" -}}
+    {{- else if .permissions.maintain -}}
+      {{- $perm = "maintain" -}}
+    {{- else if .permissions.push -}}
+      {{- $perm = "push" -}}
+    {{- else if .permissions.triage -}}
+      {{- $perm = "triage" -}}
+    {{- else if .permissions.pull -}}
+      {{- $perm = "pull" -}}
+    {{- end -}}
+    {{- tablerow .login $perm -}}
+    {{- end -}}'
+}
+
+add() {
+  local repo user
+  local args=(--silent)
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --permission)
+        args+=(-f permission="$2")
+        shift 2
+        ;;
+      *)
+        if [ -z "$repo" ]; then
+          repo="$1"
+          shift 1
+        elif [ -z "$user" ]; then
+          user="$1"
+          shift 1
+        else
+          echo "invalid argument: $1" >&2
+          return 1
+        fi
+        ;;
+    esac
+  done
+
+  if [ -z "$repo" ]; then
+    usage >&2
+    return 1
+  fi
+
+  if [ -z "$user" ]; then
+    if [ -t 0 ]; then
+      usage >&2
+      return 1
+    fi
+    while read -r user; do
+      gh api --method=PUT "repos/$repo/collaborators/$user" "${args[@]}"
+    done
+  fi
+
+  if [ -t 1 ]; then
+    local display
+    if ! display="$(gh api "users/$user" --jq '"\(.login) (\(.name))"')"; then
+      echo "error looking up user: $user"
+      return 1
+    fi
+    read -r -n 1 -p "Add $display to the $repo repository? (y/N) "
+    echo
+    [ "$REPLY" = "y" ] || return 1
+  fi
+
+  gh api --method=PUT "repos/$repo/collaborators/$user" "${args[@]}"
+}
+
+remove() {
+  local repo="$1"
+  local user="$2"
+  gh api --method=DELETE "repos/$repo/collaborators/$user" --silent
+}
+
+cmd="$1"
+[ $# -eq 0 ] || shift 1
+case "$cmd" in
+-h|--help)
+  usage
+  ;;
+add)
+  add "$@"
+  ;;
+remove)
+  remove "$@"
+  ;;
+list)
+  list "$@"
+  ;;
+*)
+  usage >&2
+  exit 1
+  ;;
+esac
