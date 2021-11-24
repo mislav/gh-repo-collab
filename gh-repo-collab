@@ -6,6 +6,8 @@ usage() {
   echo "       gh repo-collab add <repo> <login> [--permission <string>]"
   echo "       gh repo-collab add <repo> < logins-file.txt"
   echo "       gh repo-collab remove login"
+  echo
+  echo "Valid permission is one of: pull, triage, push, maintain, admin."
 }
 
 list() {
