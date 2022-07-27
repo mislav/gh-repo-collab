@@ -16,18 +16,16 @@ list() {
   gh api "repos/$repo/collaborators" --template '
     {{- range . -}}
     {{- $perm := "" -}}
-    {{- if .permissions.admin -}}
-      {{- $perm = "admin" -}}
-    {{- else if .permissions.maintain -}}
-      {{- $perm = "maintain" -}}
-    {{- else if .permissions.push -}}
-      {{- $perm = "push" -}}
-    {{- else if .permissions.triage -}}
-      {{- $perm = "triage" -}}
-    {{- else if .permissions.pull -}}
-      {{- $perm = "pull" -}}
+    {{- range $key, $val := .permissions -}}
+      {{- if $val -}}
+        {{- if $perm -}}
+          {{- $perm = printf "%s,%s" $perm $key -}}
+        {{- else -}}
+          {{- $perm = $key -}}
+        {{- end -}}
+      {{- end -}}
     {{- end -}}
-    {{- tablerow .login $perm -}}
+    {{- tablerow (.login | autocolor "green") (.role_name | autocolor "yellow+h") ($perm | autocolor "blue+h" | printf "[%s]") -}}
     {{- end -}}'
 }
 
