@@ -25,7 +25,7 @@ list() {
         {{- end -}}
       {{- end -}}
     {{- end -}}
-    {{- tablerow (.login | autocolor "green") (.role_name | autocolor "yellow+h") ($perm | autocolor "blue+h" | printf "[%s]") -}}
+    {{- tablerow (.login | autocolor "green+h") (.role_name | autocolor "yellow+h") ($perm | autocolor "blue+h" | printf "[%s]") -}}
     {{- end -}}'
 }
 
