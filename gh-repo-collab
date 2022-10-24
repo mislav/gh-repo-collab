@@ -13,7 +13,7 @@ usage() {
 list() {
   local repo='{owner}/{repo}'
   [ $# -eq 0 ] || repo="$1"
-  gh api "repos/$repo/collaborators" --template '
+  gh api --paginate "repos/$repo/collaborators" --template '
     {{- range . -}}
     {{- $perm := "" -}}
     {{- if .permissions.admin -}}
