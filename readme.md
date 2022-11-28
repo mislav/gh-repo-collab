@@ -1,6 +1,6 @@
 # gh repo-collab
 
-A GitHub CLI extension to manage repository collaborators.
+A GitHub CLI extension to manage repository access for users and organization teams.
 
 ```
 gh extension install mislav/gh-repo-collab
@@ -8,9 +8,9 @@ gh extension install mislav/gh-repo-collab
 
 ```
 Usage: gh repo-collab list [<repo>]
-       gh repo-collab add <repo> <login> [--permission <string>]
-       gh repo-collab add <repo> < logins-file.txt
-       gh repo-collab remove <repo> <login>
+       gh repo-collab add <repo> <handle> [--permission {pull|triage|push|maintain|admin}]
+       gh repo-collab add <repo> < users-file.txt
+       gh repo-collab remove <repo> <handle>
 
-Valid permission is one of: pull, triage, push, maintain, admin.
+Handle may be a GitHub user login handle or `<org>/<slug>' for an organization team.
 ```

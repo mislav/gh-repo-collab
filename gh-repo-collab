@@ -3,16 +3,17 @@ set -e
 
 usage() {
   echo "Usage: gh repo-collab list [<repo>]"
-  echo "       gh repo-collab add <repo> <login> [--permission <string>]"
-  echo "       gh repo-collab add <repo> < logins-file.txt"
-  echo "       gh repo-collab remove <repo> <login>"
+  echo "       gh repo-collab add <repo> <handle> [--permission {pull|triage|push|maintain|admin}]"
+  echo "       gh repo-collab add <repo> < users-file.txt"
+  echo "       gh repo-collab remove <repo> <handle>"
   echo
-  echo "Valid permission is one of: pull, triage, push, maintain, admin."
+  echo "Handle may be a GitHub user login handle or \`<org>/<slug>' for an organization team."
 }
 
 list() {
   local repo='{owner}/{repo}'
   [ $# -eq 0 ] || repo="$1"
+  # list individual collaborators
   gh api --paginate "repos/$repo/collaborators" --template '
     {{- range . -}}
     {{- $perm := "" -}}
@@ -28,6 +29,23 @@ list() {
       {{- $perm = "pull" -}}
     {{- end -}}
     {{- tablerow .login $perm -}}
+    {{- end -}}'
+  # list team collaborators for organization repositories
+  gh api --paginate "repos/$repo/teams" --template '
+    {{- range . -}}
+    {{- $perm := "" -}}
+    {{- if .permissions.admin -}}
+      {{- $perm = "admin" -}}
+    {{- else if .permissions.maintain -}}
+      {{- $perm = "maintain" -}}
+    {{- else if .permissions.push -}}
+      {{- $perm = "push" -}}
+    {{- else if .permissions.triage -}}
+      {{- $perm = "triage" -}}
+    {{- else if .permissions.pull -}}
+      {{- $perm = "pull" -}}
+    {{- end -}}
+    {{- tablerow (printf "/%s" .slug) $perm -}}
     {{- end -}}'
 }
 
@@ -66,14 +84,18 @@ add() {
       return 1
     fi
     while read -r user; do
-      gh api --method=PUT "repos/$repo/collaborators/$user" "${args[@]}"
+      if [[ $user == */* ]]; then
+        gh api --method=PUT "orgs/${repo%/*}/teams/${user#*/}/repos/$repo" "${args[@]}"
+      else
+        gh api --method=PUT "repos/$repo/collaborators/$user" "${args[@]}"
+      fi
     done
   fi
 
   if [ -t 1 ]; then
     local display
-    if ! display="$(gh api "users/$user" --jq '"\(.login) (\(.name))"')"; then
-      echo "error looking up user: $user"
+    if ! display="$(user-or-team "$user" "$repo")"; then
+      echo "error looking up user or team: $user"
       return 1
     fi
     read -r -n 1 -p "Add $display to the $repo repository? (y/N) "
@@ -81,13 +103,33 @@ add() {
     [ "$REPLY" = "y" ] || return 1
   fi
 
-  gh api --method=PUT "repos/$repo/collaborators/$user" "${args[@]}"
+  if [[ $user == */* ]]; then
+    gh api --method=PUT "orgs/${repo%/*}/teams/${user#*/}/repos/$repo" "${args[@]}"
+  else
+    gh api --method=PUT "repos/$repo/collaborators/$user" "${args[@]}"
+  fi
+}
+
+user-or-team() {
+  local handle="${1?}"
+  local repo="${2?}"
+  if [[ $handle == */* ]]; then
+    local org="${handle%/*}"
+    [ -n "$org" ] || org="${repo%/*}"
+    gh api "orgs/${org}/teams/${handle#*/}" --jq '"team \(.organization.login)/\(.slug) (\(.name))"'
+  else
+    gh api "users/$handle" --jq '"\(.login) (\(.name))"'
+  fi
 }
 
 remove() {
   local repo="$1"
   local user="$2"
-  gh api --method=DELETE "repos/$repo/collaborators/$user" --silent
+  if [[ $user == */* ]]; then
+    gh api --method=DELETE "orgs/${repo%/*}/teams/${user#*/}/repos/$repo" --silent
+  else
+    gh api --method=DELETE "repos/$repo/collaborators/$user" --silent
+  fi
 }
 
 cmd="$1"
