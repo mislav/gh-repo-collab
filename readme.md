@@ -1,5 +1,7 @@
 # gh repo-collab
 
+_* This is a fork of [mislav/gh-repo-collab](https://github.com/mislav/gh-repo-collab) with some personal improvements_
+
 A GitHub CLI extension to manage repository collaborators.
 
 ```
