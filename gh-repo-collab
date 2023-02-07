@@ -12,7 +12,7 @@ usage() {
 
 list() {
   local repo='{owner}/{repo}'
-  [ $# -eq 0 ] || repo="$1"
+  [ $# -eq 0 ] || repo="${1#https://github.com/}"
   gh api "repos/$repo/collaborators" --paginate --template '
     {{- range . -}}
     {{- $perm := "" -}}
@@ -40,7 +40,7 @@ add() {
         ;;
       *)
         if [ -z "$repo" ]; then
-          repo="$1"
+          repo="${1#https://github.com/}"
           shift 1
         elif [ -z "$user" ]; then
           user="$1"
@@ -83,7 +83,7 @@ add() {
 }
 
 remove() {
-  local repo="$1"
+  local repo="${1#https://github.com/}"
   local user="$2"
   gh api --method=DELETE "repos/$repo/collaborators/$user" --silent
 }
