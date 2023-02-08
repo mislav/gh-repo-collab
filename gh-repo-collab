@@ -42,7 +42,7 @@ list() {
         {{- end -}}
       {{- end -}}
     {{- end -}}
-    {{- tablerow (.name | autocolor "green+h") (.permission | autocolor "yellow+h") ($perm | autocolor "blue+h" | printf "[%s]") -}}
+    {{- tablerow ((printf "team:%s" .name | autocolor "green+h") (.permission | autocolor "yellow+h") ($perm | autocolor "blue+h" | printf "[%s]") -}}
     {{- end -}}'
 }
 
