@@ -3,11 +3,14 @@ set -e
 
 usage() {
   echo "Usage: gh repo-collab list [<repo>]"
+  echo "       gh repo-collab add <handle>"
   echo "       gh repo-collab add <repo> <handle> [--permission {pull|triage|push|maintain|admin}]"
   echo "       gh repo-collab add <repo> < users-file.txt"
   echo "       gh repo-collab remove <repo> <handle>"
   echo
   echo "Handle may be a GitHub user login handle or \`<org>/<slug>' for an organization team."
+  echo "Repo must be in the format of <owner>/<repo>."
+  echo "If no repo is specified, the GitHub repository of the current directory is used."
 }
 
 list() {
@@ -73,9 +76,22 @@ add() {
     esac
   done
 
-  if [ -z "$repo" ]; then
-    usage >&2
-    return 1
+
+  # if no user is specified and there's no stdin, then only a single argument was passed
+  # assume this is the user and try to get the repo name
+  if [ -z "$user" ] && [ -t 0 ]; then
+    # attempt to get the name of the current repo
+    local local_repo
+    local_repo="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null)"
+
+    if [ -z "$local_repo" ]; then
+      echo "Local repository could not be determined" >&2
+      usage >&2
+      return 1
+    fi
+
+    user=$repo
+    repo=$local_repo
   fi
 
   if [ -z "$user" ]; then
@@ -83,6 +99,8 @@ add() {
       usage >&2
       return 1
     fi
+
+    # read user user name from stdin
     while read -r user; do
       if [[ $user == */* ]]; then
         gh api --method=PUT "orgs/${repo%/*}/teams/${user#*/}/repos/$repo" "${args[@]}"
@@ -98,7 +116,7 @@ add() {
       echo "error looking up user or team: $user"
       return 1
     fi
-    read -r -n 1 -p "Add $display to the $repo repository? (y/N) "
+    read -r -n 1 -p "Add $display to the '$repo' repository? (y/N) "
     echo
     [ "$REPLY" = "y" ] || return 1
   fi
